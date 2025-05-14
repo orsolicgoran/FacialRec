@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 def resize_and_pad(img, target_size, pad_color=(0,0,0)):
@@ -50,26 +51,46 @@ def color_correct_img(img):
 def process_img(img, target_size, pad_color=(0, 0, 0)):
 	if img is not None:
 		img = resize_and_pad(img, target_size, pad_color)
-		img = normalize_img(img)
 		img = color_correct_img(img)
+		img = normalize_img(img)
 		return img
 	else:
 		return None
 
 
-def process_folder(directory):
-	pass
+def process_folder(input_base_dir_path, output_base_dir_path):
+	if not os.path.exists(output_base_dir_path):
+		os.makedirs(output_base_dir_path, exist_ok=True)
+  
+  
+	img_extension = ".jpg"
+	for root, dirs, files in os.walk(input_base_dir_path):
+		for filename in files:
+			if filename.lower().endswith(img_extension):
+				input_image_path = os.path.join(root, filename)
+
+				relative_path = os.path.relpath(input_image_path, input_base_dir_path)
+				output_image_path = os.path.join(output_base_dir_path, relative_path)
+    
+				output_image_folder = os.path.dirname(output_image_path)
+				if not os.path.exists(output_image_folder):
+					os.makedirs(output_image_folder, exist_ok=True)
+     
+				preprocessed_image = process_img(cv2.imread(input_image_path), 416)
+				if preprocessed_image is not None:
+					preprocessed_image = preprocessed_image * 255.0
+					preprocessed_image = preprocessed_image.astype(np.uint8)
+					preprocessed_image = cv2.cvtColor(preprocessed_image, cv2.COLOR_RGB2BGR)
+					try:
+						cv2.imwrite(output_image_path, preprocessed_image)
+					except Exception as e:
+						pass					
+				else:
+					pass
+				
 
 
 if __name__ == "__main__":
-	image_path = "/home/goran/Programming/Python/projects/zavrsni/data/WIDER_train/images/0--Parade/0_Parade_marchingband_1_100.jpg"
-	image = cv2.imread(image_path)
-	if image is not None:
-		processed_image = process_img(image, 512)
-		if processed_image is not None:
-			plt.imshow(processed_image)	
-			plt.show()
-		else:
-			print(f"Failed to process image")
-	else:
-		print(f"Could not load image")
+	process_folder("data/WIDER_test/images", "processed_data/WIDER_test/images")
+	process_folder("data/WIDER_train/images", "processed_data/WIDER_train/images")
+	process_folder("data/WIDER_val/images", "processed_data/WIDER_val/images")
